@@ -190,7 +190,7 @@ public class ContainerDetailFragment extends Fragment {
 
         AppUtils.setupTabLayout(view, R.id.TabLayout, (tabResId) -> {
             if (tabResId == R.id.LLTabAdvanced) if ((byte)sWinVersion.getTag() == -1) WinVersions.loadSpinner(container, sWinVersion);
-        }, R.id.LLTabWineConfiguration, R.id.LLTabWinComponents, R.id.LLTabEnvVars, R.id.LLTabDrives, R.id.LLTabAdvanced);
+        }, R.id.LLTabbaseInfo, R.id.LLTabWineConfiguration, R.id.LLTabWinComponents, R.id.LLTabEnvVars, R.id.LLTabDrives, R.id.LLTabAdvanced);
 
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {
             try {

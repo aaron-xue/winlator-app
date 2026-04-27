@@ -92,7 +92,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         ContainerDetailFragment.createWinComponentsTab(getContentView(), shortcut.getExtra("wincomponents", shortcut.container.getWinComponents()));
         final EnvVarsView envVarsView = createEnvVarsTab();
 
-        AppUtils.setupTabLayout(getContentView(), R.id.TabLayout, R.id.LLTabWinComponents, R.id.LLTabEnvVars, R.id.LLTabAdvanced);
+        AppUtils.setupTabLayout(getContentView(), R.id.TabLayout, R.id.LLTabbaseInfo, R.id.LLTabWinComponents, R.id.LLTabEnvVars, R.id.LLTabAdvanced);
 
         findViewById(R.id.BTExtraArgsMenu).setOnClickListener((v) -> {
             PopupMenu popupMenu = new PopupMenu(context, v);
