@@ -68,6 +68,8 @@ STBDDEF void stb_compress_bc5_block(unsigned char *dest, const unsigned char *sr
 
 #ifdef STB_DXT_IMPLEMENTATION
 
+#include <string.h>
+
 // configuration options for DXT encoder. set them in the project/makefile or just define
 // them at the top.
 
