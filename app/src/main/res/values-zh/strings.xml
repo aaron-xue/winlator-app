@@ -8,6 +8,7 @@
     <string name="shortcuts">快捷方式</string>
     <string name="containers">容器管理</string>
     <string name="input_controls">虚拟按键</string>
+    <string name="contents">附加内容</string>
     <string name="no_items_to_display">没有可显示的项目</string>
     <string name="new_container">新建容器</string>
     <string name="edit_container">编辑容器</string>
@@ -31,7 +32,7 @@
     <string name="binding_down">绑定向下按键</string>
     <string name="binding_left">绑定向左按键</string>
     <string name="overlay_opacity">透明度</string>
-    <string name="opacity">Opacity</string>
+    <string name="opacity">不透明度</string>
     <string name="profile">配置文件</string>
     <string name="select_profile">选择控件</string>
     <string name="profile_name">配置名称</string>
@@ -97,6 +98,7 @@
     <string name="press_any_button_on_your_controller">按下控制器上的任何按钮</string>
     <string name="bindings">Bindings</string>
     <string name="show_touchscreen_controls">显示触摸屏控件</string>
+    <string name="haptic_feedback">振动反馈</string>
     <string name="dxwrapper" translatable="false">图形加速(请点击❓查看说明)</string>
     <string name="mouse_warp_override" translatable="false">游标覆盖偏移(影响鼠标移动)</string>
     <string name="direct3d" translatable="false">D3D运行库(direct3d)</string>
@@ -344,7 +346,7 @@
     <string name="adrenotools_driver" translatable="false">Adrenotools驱动</string>
     <string name="resource_memory_type">资源存储类型</string>
     <string name="zero_no_limit">0 (无限制)</string>
-    <string name="custom">Custom</string>
+    <string name="custom">自定义</string>
     <string name="minimal">最小</string>
     <string name="trace">跟踪</string>
     <string name="builtin_wine">内置 (Wine)</string>
@@ -372,4 +374,18 @@
     <string name="full">全开</string>
     <string name="ddraw_wrapper" translatable="false">DDraw 封装器</string>
     <string name="renderer">Renderer</string>
+    <string name="running_notification_text">正在运行</string>
+    <string name="fix_perms">修复权限</string>
+    <string name="fix_perms_done">权限修复完成</string>
+    <string name="running_notification_desc">Winlator 运行状态</string>
+    <string name="backup">备份</string>
+    <string name="restore">恢复</string>
+    <string name="backing_up_container">正在备份容器...</string>
+    <string name="restoring_container">正在恢复容器...</string>
+    <string name="do_you_want_to_backup_this_container">您 想 备 份 这 个 容 器 吗?</string>
+    <string name="backup_saved_to">备份已保存到</string>
+    <string name="unable_to_backup_container">无法备份容器</string>
+    <string name="unable_to_restore_container">无法恢复容器</string>
+    <string name="invalid_restore_file">请选择 .whp 文件</string>
+    <string name="touchpad_mode">触控板模式</string>
 </resources>

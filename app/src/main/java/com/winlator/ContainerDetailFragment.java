@@ -43,9 +43,11 @@ import com.winlator.contentdialog.VortekConfigDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
 import com.winlator.container.DXWrapperPicker;
+import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.container.GraphicsDriverPicker;
+import com.winlator.core.GeneralComponents;
 import com.winlator.core.KeyValueSet;
 import com.winlator.core.PreloaderDialog;
 import com.winlator.core.StringUtils;
@@ -54,6 +56,8 @@ import com.winlator.core.WineInstaller;
 import com.winlator.core.WineRegistryEditor;
 import com.winlator.core.WineThemeManager;
 import com.winlator.core.WineUtils;
+import com.winlator.inputcontrols.ControlsProfile;
+import com.winlator.inputcontrols.InputControlsManager;
 import com.winlator.widget.CPUListView;
 import com.winlator.widget.ColorPickerView;
 import com.winlator.widget.EnvVarsView;
@@ -156,12 +160,19 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sHUDMode = view.findViewById(R.id.SHUDMode);
         sHUDMode.setSelection(isEditMode() ? container.getHUDMode() : FrameRating.Mode.DISABLED.ordinal());
 
+        final Spinner sControlsProfile = view.findViewById(R.id.SControlsProfile);
+        loadControlsProfileSpinner(sControlsProfile, isEditMode() ? container.getExtra("controlsProfile", "0") : "0");
+
         final Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
         byte oldStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
         sStartupSelection.setSelection(oldStartupSelection != -1 ? oldStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
 
         final Spinner sWinVersion = view.findViewById(R.id.SWinVersion);
         sWinVersion.setTag((byte)-1);
+
+        final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
+        String box64Version = isEditMode() ? container.getBox64Version() : DefaultVersion.BOX64;
+        GeneralComponents.initViews(GeneralComponents.Type.BOX64, view.findViewById(R.id.Box64Toolbox), sBox64Version, box64Version, DefaultVersion.BOX64);
 
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box64PresetManager.loadSpinner(sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box64Preset.DEFAULT));
@@ -199,6 +210,7 @@ public class ContainerDetailFragment extends Fragment {
                 String cpuListWoW64 = cpuListViewWoW64.getCheckedCPUListAsString();
                 byte startupSelection = (byte)sStartupSelection.getSelectedItemPosition();
                 String box64Preset = Box64PresetManager.getSpinnerSelectedId(sBox64Preset);
+                String box64VersionSelected = StringUtils.parseIdentifier(sBox64Version.getSelectedItem());
                 String desktopTheme = getDesktopTheme(view);
 
                 if (isEditMode()) {
@@ -218,7 +230,13 @@ public class ContainerDetailFragment extends Fragment {
                     container.setHUDMode(hudMode);
                     container.setStartupSelection(startupSelection);
                     container.setBox64Preset(box64Preset);
+                    container.setBox64Version(box64VersionSelected);
                     container.setDesktopTheme(desktopTheme);
+
+                    ArrayList<ControlsProfile> profiles = new InputControlsManager(context).getProfiles(true);
+                    int controlsProfile = sControlsProfile.getSelectedItemPosition() > 0 ? profiles.get(sControlsProfile.getSelectedItemPosition()-1).id : 0;
+                    container.putExtra("controlsProfile", controlsProfile > 0 ? String.valueOf(controlsProfile) : null);
+
                     container.saveData();
 
                     saveWineRegistryKeys(view);
@@ -246,6 +264,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("hudMode", hudMode);
                     data.put("startupSelection", startupSelection);
                     data.put("box64Preset", box64Preset);
+                    data.put("box64Version", box64VersionSelected);
                     data.put("desktopTheme", desktopTheme);
 
                     if (wineInfos.size() > 1) {
@@ -257,6 +276,10 @@ public class ContainerDetailFragment extends Fragment {
                         if (container != null) {
                             this.container = container;
                             saveWineRegistryKeys(view);
+                            ArrayList<ControlsProfile> profiles = new InputControlsManager(context).getProfiles(true);
+                            int controlsProfile = sControlsProfile.getSelectedItemPosition() > 0 ? profiles.get(sControlsProfile.getSelectedItemPosition()-1).id : 0;
+                            container.putExtra("controlsProfile", controlsProfile > 0 ? String.valueOf(controlsProfile) : null);
+                            container.saveData();
                         }
                         preloaderDialog.close();
                         getActivity().onBackPressed();
@@ -544,5 +567,23 @@ public class ContainerDetailFragment extends Fragment {
         view.findViewById(R.id.LLWineVersion).setVisibility(View.VISIBLE);
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineInfos));
         if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sWineVersion, WineInfo.fromIdentifier(context, container.getWineVersion()).toString());
+    }
+
+    private static void loadControlsProfileSpinner(Spinner spinner, String selectedValue) {
+        Context context = spinner.getContext();
+        ArrayList<ControlsProfile> profiles = new InputControlsManager(context).getProfiles(true);
+        ArrayList<String> values = new ArrayList<>();
+        values.add(context.getString(R.string.none));
+
+        int selectedPosition = 0;
+        int selectedId = Integer.parseInt(selectedValue);
+        for (int i = 0; i < profiles.size(); i++) {
+            ControlsProfile profile = profiles.get(i);
+            if (profile.id == selectedId) selectedPosition = i + 1;
+            values.add(profile.getName());
+        }
+
+        spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, values));
+        spinner.setSelection(selectedPosition, false);
     }
 }

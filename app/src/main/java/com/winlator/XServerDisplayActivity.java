@@ -144,6 +144,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         AppUtils.keepScreenOn(this);
         setContentView(R.layout.xserver_display_activity);
 
+        startService(new Intent(this, ForegroundService.class));
+
         final PreloaderDialog preloaderDialog = new PreloaderDialog(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         boolean useAndroidClipboardOnWine = preferences.getBoolean("use_android_clipboard_on_wine", false);
@@ -321,6 +323,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             xServerView.onResume();
             environment.onResume();
         }
+        if (inputControlsView != null) {
+            inputControlsView.setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
+            inputControlsView.invalidate();
+        }
     }
 
     @Override
@@ -362,6 +368,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         } else if (itemId == R.id.menu_item_toggle_fullscreen) {
             renderer.toggleFullscreen();
             drawerLayout.closeDrawers();
+            touchpadView.toggleFullscreen();
+        } else if (itemId == R.id.menu_item_move_cursor_to_touchpoint) {
+            touchpadView.setMoveCursorToTouchpoint(!touchpadView.isMoveCursorToTouchpoint());
+            drawerLayout.closeDrawers();
         } else if (itemId == R.id.menu_item_task_manager) {
             (new TaskManagerDialog(this)).show();
             drawerLayout.closeDrawers();
@@ -396,6 +406,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         } else if (itemId == R.id.menu_item_logs) {
             debugDialog.show();
             drawerLayout.closeDrawers();
+        } else if (itemId == R.id.menu_item_fix_perms) {
+            Executors.newSingleThreadExecutor().execute(() -> {
+                try {
+                    Runtime.getRuntime().exec(new String[]{"chmod", "-R", "777", rootFS.getRootDir().getAbsolutePath()});
+                } catch (Exception e) {}
+                AppUtils.showToast(this, R.string.fix_perms_done);
+            });
+            drawerLayout.closeDrawers();
         } else if (itemId == R.id.menu_item_touchpad_help) {
             showTouchpadHelpDialog();
         } else if (itemId == R.id.menu_item_exit) {
@@ -409,6 +427,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void exit() {
+        stopService(new Intent(this, ForegroundService.class));
         winHandler.stop();
         if (environment != null) environment.stopEnvironmentComponents();
 
@@ -500,6 +519,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1");
 
             guestProgramLauncherComponent.setBox64Preset(shortcut != null ? shortcut.getExtra("box64Preset", container.getBox64Preset()) : container.getBox64Preset());
+            guestProgramLauncherComponent.setBox64Version(container.getBox64Version());
         }
 
         environment = new XEnvironment(this, rootFS);
@@ -576,7 +596,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         capturePointerOnExternalMouse = preferences.getBoolean("capture_pointer_on_external_mouse", true);
         touchpadView = new TouchpadView(this, xServer, capturePointerOnExternalMouse);
         touchpadView.setSensitivity(globalCursorSpeed);
-        touchpadView.setMoveCursorToTouchpoint(preferences.getBoolean("move_cursor_to_touchpoint", false));
         touchpadView.setFourFingersTapCallback(() -> {
             if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
         });
@@ -584,6 +603,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         inputControlsView = new InputControlsView(this);
         inputControlsView.setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
+        inputControlsView.setTouchHapticFeedbackEnabled(preferences.getBoolean("haptic_feedback", false));
         inputControlsView.setTouchpadView(touchpadView);
         inputControlsView.setXServer(xServer);
         inputControlsView.setVisibility(View.GONE);
@@ -598,6 +618,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (shortcut != null) {
             String controlsProfile = shortcut.getExtra("controlsProfile");
+            if (!controlsProfile.isEmpty()) {
+                ControlsProfile profile = inputControlsManager.getProfile(Integer.parseInt(controlsProfile));
+                if (profile != null) showInputControls(profile);
+            }
+        }
+        else {
+            String controlsProfile = container.getExtra("controlsProfile", "");
             if (!controlsProfile.isEmpty()) {
                 ControlsProfile profile = inputControlsManager.getProfile(Integer.parseInt(controlsProfile));
                 if (profile != null) showInputControls(profile);
@@ -618,10 +645,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
             ArrayList<String> profileItems = new ArrayList<>();
             int selectedPosition = 0;
+            ControlsProfile currentProfile = inputControlsView.getProfile();
             profileItems.add("-- "+getString(R.string.disabled)+" --");
             for (int i = 0; i < profiles.size(); i++) {
                 ControlsProfile profile = profiles.get(i);
-                if (profile == inputControlsView.getProfile()) selectedPosition = i + 1;
+                if (currentProfile != null && profile.id == currentProfile.id) selectedPosition = i + 1;
                 profileItems.add(profile.getName());
             }
 
@@ -636,15 +664,29 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         final CheckBox cbShowTouchscreenControls = dialog.findViewById(R.id.CBShowTouchscreenControls);
         cbShowTouchscreenControls.setChecked(inputControlsView.isShowTouchscreenControls());
 
+        final CheckBox cbHapticFeedback = dialog.findViewById(R.id.CBHapticFeedback);
+        cbHapticFeedback.setChecked(inputControlsView.isTouchHapticFeedbackEnabled());
+
         dialog.findViewById(R.id.BTSettings).setOnClickListener((v) -> {
             int position = sProfile.getSelectedItemPosition();
+            int currentProfileId = position > 0 ? inputControlsManager.getProfiles().get(position - 1).id : 0;
             Intent intent = new Intent(this, MainActivity.class);
             intent.putExtra("edit_input_controls", true);
-            intent.putExtra("selected_profile_id", position > 0 ? inputControlsManager.getProfiles().get(position - 1).id : 0);
+            intent.putExtra("selected_profile_id", currentProfileId);
             editInputControlsCallback = () -> {
                 hideInputControls();
                 inputControlsManager.loadProfiles(true);
-                loadProfileSpinner.run();
+                ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
+                ArrayList<String> profileItems = new ArrayList<>();
+                int selectedPosition = 0;
+                profileItems.add("-- "+getString(R.string.disabled)+" --");
+                for (int i = 0; i < profiles.size(); i++) {
+                    ControlsProfile profile = profiles.get(i);
+                    if (currentProfileId > 0 && profile.id == currentProfileId) selectedPosition = i + 1;
+                    profileItems.add(profile.getName());
+                }
+                sProfile.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, profileItems));
+                sProfile.setSelection(selectedPosition);
             };
             startActivityForResult(intent, MainActivity.EDIT_INPUT_CONTROLS_REQUEST_CODE);
         });
@@ -652,6 +694,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         dialog.setOnConfirmCallback(() -> {
             xServer.setRelativeMouseMovement(cbRelativeMouseMovement.isChecked());
             inputControlsView.setShowTouchscreenControls(cbShowTouchscreenControls.isChecked());
+            inputControlsView.setTouchHapticFeedbackEnabled(cbHapticFeedback.isChecked());
+            preferences.edit().putBoolean("haptic_feedback", cbHapticFeedback.isChecked()).apply();
             int position = sProfile.getSelectedItemPosition();
             if (position > 0) {
                 showInputControls(inputControlsManager.getProfiles().get(position - 1));
@@ -668,7 +712,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView.setProfile(profile);
 
         touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
-        touchpadView.setPointerButtonRightEnabled(false);
+        touchpadView.setTouchpadMode(profile.getTouchpadMode());
+        touchpadView.setMoveCursorToTouchpoint(profile.isMoveCursorToTouchpoint());
+        // touchpadView.setPointerButtonRightEnabled(false);
 
         GLRenderer renderer = xServerView.getRenderer();
         if (profile.isDisableMouseInput()) {

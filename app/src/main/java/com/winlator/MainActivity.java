@@ -26,6 +26,7 @@ import androidx.preference.PreferenceManager;
 
 import com.google.android.material.navigation.NavigationView;
 import com.winlator.contentdialog.AboutDialog;
+import com.winlator.contents.ContentsFragment;
 import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
 import com.winlator.core.LocaleHelper;
@@ -127,6 +128,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public void onBackPressed() {
+        if (editInputControls) {
+            setResult(RESULT_OK);
+            finish();
+            return;
+        }
         if (currentFragment != null && currentFragment.isVisible()) {
             if (currentFragment instanceof BaseFileManagerFragment) {
                 BaseFileManagerFragment fileManagerFragment = (BaseFileManagerFragment)currentFragment;
@@ -157,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public boolean onOptionsItemSelected(MenuItem menuItem) {
         int itemId = menuItem.getItemId();
         if (itemId == R.id.menu_item_add ||
+            itemId == R.id.icon_action_bar_re ||
             itemId == R.id.menu_item_home ||
             itemId == R.id.menu_item_view_style ||
             itemId == R.id.menu_item_new_folder) {
@@ -194,6 +201,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             showFragment(new ContainersFragment());
         } else if (itemId == R.id.menu_item_input_controls) {
             showFragment(new InputControlsFragment(selectedProfileId));
+        } else if (itemId == R.id.menu_item_contents) {
+            showFragment(new ContentsFragment());
         } else if (itemId == R.id.menu_item_settings) {
             showFragment(new SettingsFragment());
         } else if (itemId == R.id.menu_item_about) {

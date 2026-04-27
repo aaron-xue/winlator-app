@@ -28,6 +28,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private static int pid = -1;
     private EnvVars envVars;
     private String box64Preset = Box64Preset.CONSERVATIVE;
+    private String box64Version = DefaultVersion.BOX64;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
 
@@ -83,9 +84,20 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.box64Preset = box64Preset;
     }
 
+    public String getBox64Version() {
+        return box64Version;
+    }
+
+    public void setBox64Version(String box64Version) {
+        this.box64Version = box64Version;
+    }
+
     private int execGuestProgram() {
         RootFS rootFS = environment.getRootFS();
         File rootDir = rootFS.getRootDir();
+
+        String winePath = rootFS.getWinePath();
+        boolean isArm64ec = winePath != null ? winePath.contains("arm64ec") : false;
 
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars);
@@ -96,16 +108,27 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("TMPDIR", rootDir+"/tmp");
         envVars.put("DISPLAY", ":0");
         envVars.put("PATH", rootDir+rootFS.getWinePath()+"/bin:"+rootDir+"/usr/local/bin:"+rootDir+"/usr/bin");
-        envVars.put("LD_LIBRARY_PATH", rootFS.getLibDir().getPath());
+        if (isArm64ec) {
+            envVars.put("LD_LIBRARY_PATH", rootDir + winePath + "/lib/wine/aarch64-unix:" + rootDir + "/usr/lib");
+            envVars.put("HODLL", "libwow64fex.dll");
+        } else {
+            envVars.put("LD_LIBRARY_PATH", rootFS.getLibDir().getPath());
+        }
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir+"/lib/x86_64-linux-gnu");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir+UnixSocketConfig.SYSVSHM_SERVER_PATH);
+        envVars.put("WINE_HOST_XDG_CURRENT_DESKTOP", "1");//新版wine桌面创建快捷方式需要这个
 
         if (this.envVars != null) envVars.putAll(this.envVars);
 
         File shmDir = new File(rootDir, "/tmp/shm");
         if (!shmDir.isDirectory()) shmDir.mkdirs();
 
-        String command = rootDir+"/usr/local/bin/box64 "+guestExecutable;
+        String command;
+        if (isArm64ec) {
+            command = rootDir + winePath + "/bin/" + guestExecutable;
+        } else {
+            command = rootDir + "/usr/local/bin/box64 " + rootDir + winePath + "/bin/" + guestExecutable;
+        }
 
         return ProcessHelper.exec(command, envVars, rootDir, (status) -> {
             synchronized (lock) {
@@ -118,7 +141,6 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private void extractBox64File() {
         Context context = environment.getContext();
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        String box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
         String currentBox64Version = preferences.getString("current_box64_version", "");
 
         if (!box64Version.equals(currentBox64Version)) {

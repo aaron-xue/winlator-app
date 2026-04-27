@@ -349,8 +349,26 @@ public class ControlElement {
         return boundingBox;
     }
 
+    private boolean isSwapMouseButtons() {
+        TouchpadView touchpadView = inputControlsView.getTouchpadView();
+        return touchpadView != null && touchpadView.isSwapMouseButtons();
+    }
+
+    private byte getEffectiveIconId() {
+        if (iconId > 0 && isSwapMouseButtons()) {
+            Binding primaryBinding = bindings[0];
+            if (primaryBinding == Binding.MOUSE_LEFT_BUTTON) return 13;
+            if (primaryBinding == Binding.MOUSE_RIGHT_BUTTON) return 12;
+        }
+        return iconId;
+    }
+
     private String getBindingTextAt(int index) {
         Binding binding = getBindingAt(index);
+        if (isSwapMouseButtons()) {
+            if (binding == Binding.MOUSE_LEFT_BUTTON) binding = Binding.MOUSE_RIGHT_BUTTON;
+            else if (binding == Binding.MOUSE_RIGHT_BUTTON) binding = Binding.MOUSE_LEFT_BUTTON;
+        }
         String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "");
         if (text.length() > 7) {
             String[] parts = text.split(" ");
@@ -455,8 +473,9 @@ public class ControlElement {
                     }
                 }
 
-                if (iconId > 0) {
-                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId, true);
+                byte effectiveIconId = getEffectiveIconId();
+                if (effectiveIconId > 0) {
+                    drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), effectiveIconId, true);
                 }
                 else {
                     String text = getDisplayText();
@@ -806,6 +825,12 @@ public class ControlElement {
         return !propertyFlags.isSet(FLAG_TOGGLE_SWITCH) && (binding == Binding.GAMEPAD_BUTTON_L3 || binding == Binding.GAMEPAD_BUTTON_R3);
     }
 
+    private void performHapticFeedback() {
+        if (inputControlsView.isTouchHapticFeedbackEnabled()) {
+            inputControlsView.performTouchHapticFeedback();
+        }
+    }
+
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
@@ -815,12 +840,14 @@ public class ControlElement {
                 if (propertyFlags.isSet(FLAG_MOUSE_MOVE_MODE)) inputControlsView.getTouchpadView().mouseMove(x, y, MotionEvent.ACTION_DOWN);
 
                 propertyFlags.set(FLAG_PRESSED);
+                performHapticFeedback();
                 inputControlsView.invalidate();
                 return true;
             }
             else if (type == Type.RANGE_BUTTON) {
                 scroller.handleTouchDown(x, y);
                 propertyFlags.set(FLAG_PRESSED);
+                performHapticFeedback();
                 inputControlsView.invalidate();
                 return true;
             }
@@ -830,6 +857,7 @@ public class ControlElement {
                     byte note = (byte)(12 + MIDIHandler.parseNoteNumber(text));
                     winHandler.getMIDIhandler().sendShortMsg((byte) MIDIHandler.CMD_NOTE_ON, (byte)0, note, Byte.MAX_VALUE);
                     propertyFlags.set(FLAG_PRESSED);
+                    performHapticFeedback();
                     inputControlsView.invalidate();
                 }
                 return true;
@@ -841,6 +869,7 @@ public class ControlElement {
                     }
                 }
                 else propertyFlags.set(FLAG_VISIBLE);
+                performHapticFeedback();
                 inputControlsView.invalidate();
                 return true;
             }
@@ -849,6 +878,7 @@ public class ControlElement {
                     if (currentPosition == null) currentPosition = new PointF();
                     currentPosition.set(x, y);
                 }
+                performHapticFeedback();
                 return handleTouchMove(pointerId, x, y);
             }
         }

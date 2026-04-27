@@ -11,11 +11,20 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
+import android.os.VibrationAttributes;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.winlator.core.AppUtils;
 
 import com.winlator.inputcontrols.Binding;
 import com.winlator.inputcontrols.ControlElement;
@@ -58,12 +67,21 @@ public class InputControlsView extends View {
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
+    private boolean touchHapticFeedbackEnabled = false;
+    private Vibrator vibrator;
 
     public InputControlsView(Context context) {
         super(context);
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
+        setHapticFeedbackEnabled(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager manager = (VibratorManager)context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            vibrator = manager != null ? manager.getDefaultVibrator() : null;
+        } else {
+            vibrator = (Vibrator)context.getSystemService(Context.VIBRATOR_SERVICE);
+        }
         setBackgroundColor(0x00000000);
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
@@ -219,6 +237,26 @@ public class InputControlsView extends View {
 
     public void setShowTouchscreenControls(boolean showTouchscreenControls) {
         this.showTouchscreenControls = showTouchscreenControls;
+    }
+
+    public boolean isTouchHapticFeedbackEnabled() {
+        return touchHapticFeedbackEnabled;
+    }
+
+    public void setTouchHapticFeedbackEnabled(boolean touchHapticFeedbackEnabled) {
+        this.touchHapticFeedbackEnabled = touchHapticFeedbackEnabled;
+    }
+
+    public void performTouchHapticFeedback() {
+        if (touchHapticFeedbackEnabled && vibrator != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                vibrator.vibrate(VibrationEffect.createOneShot(30, 200), new VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_MEDIA).build());
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(30, 200));
+            } else {
+                vibrator.vibrate(30);
+            }
+        }
     }
 
     private synchronized ControlElement intersectElement(float x, float y) {
@@ -381,21 +419,22 @@ public class InputControlsView extends View {
                     touchpadView.setPointerButtonLeftEnabled(true);
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) handled = true;
-                        if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
-                            touchpadView.setPointerButtonLeftEnabled(false);
-                        }
+                        // if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
+                        //     touchpadView.setPointerButtonLeftEnabled(false);
+                        // }
                     }
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
                 }
                 case MotionEvent.ACTION_MOVE: {
                     for (byte i = 0, count = (byte)event.getPointerCount(); i < count; i++) {
+                        int currentPointerId = event.getPointerId(i);
                         float x = event.getX(i);
                         float y = event.getY(i);
 
                         handled = false;
                         for (ControlElement element : profile.getElements()) {
-                            if (element.handleTouchMove(i, x, y)) handled = true;
+                            if (element.handleTouchMove(currentPointerId, x, y)) handled = true;
                         }
                         if (!handled) touchpadView.onTouchEvent(event);
                     }
@@ -406,7 +445,9 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_CANCEL: {
                     float x = event.getX(actionIndex);
                     float y = event.getY(actionIndex);
-                    for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId, x, y)) handled = true;
+                    for (ControlElement element : profile.getElements()) {
+                        if (element.handleTouchUp(pointerId, x, y)) handled = true;
+                    }
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
                 }
@@ -482,6 +523,15 @@ public class InputControlsView extends View {
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
                 mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
                 if (isActionDown) createMouseMoveTimer();
+            }
+            else if (binding == Binding.MOUSE_SWAPL_R_BUTTONS) {
+                if (isActionDown && touchpadView != null) {
+                    touchpadView.setSwapMouseButtons();
+                    invalidate();
+                }
+            }
+            else if (binding == Binding.MOUSE_SHOW_INPUT_METHOD) {
+                if (isActionDown) AppUtils.showKeyboard((AppCompatActivity)getContext());
             }
             else {
                 Pointer.Button pointerButton = binding.getPointerButton();

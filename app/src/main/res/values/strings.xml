@@ -8,6 +8,7 @@
     <string name="shortcuts">Shortcuts</string>
     <string name="containers">Containers</string>
     <string name="input_controls">Input Controls</string>
+    <string name="contents">Contents</string>
     <string name="no_items_to_display">No items to display</string>
     <string name="new_container">New Container</string>
     <string name="edit_container">Edit Container</string>
@@ -97,6 +98,7 @@
     <string name="press_any_button_on_your_controller">Press any button on your controller</string>
     <string name="bindings">Bindings</string>
     <string name="show_touchscreen_controls">Show Touchscreen Controls</string>
+    <string name="haptic_feedback">Haptic Feedback</string>
     <string name="dxwrapper" translatable="false">DX Wrapper</string>
     <string name="mouse_warp_override" translatable="false">Mouse Warp Override</string>
     <string name="direct3d" translatable="false">Direct3D</string>
@@ -347,4 +349,18 @@
     <string name="full">Full</string>
     <string name="ddraw_wrapper" translatable="false">DDraw Wrapper</string>
     <string name="renderer">Renderer</string>
+    <string name="running_notification_text">Running</string>
+    <string name="fix_perms">Fix Permissions</string>
+    <string name="fix_perms_done">Permissions fixed</string>
+    <string name="running_notification_desc">Winlator running status</string>
+    <string name="backup">Backup</string>
+    <string name="restore">Restore</string>
+    <string name="backing_up_container">Backing Up Container...</string>
+    <string name="restoring_container">Restoring Container...</string>
+    <string name="do_you_want_to_backup_this_container">Do you want to backup this container?</string>
+    <string name="backup_saved_to">Backup saved to</string>
+    <string name="unable_to_backup_container">Unable to backup container</string>
+    <string name="unable_to_restore_container">Unable to restore container</string>
+    <string name="invalid_restore_file">Please select a .whp file</string>
+    <string name="touchpad_mode">Touchpad Mode</string>
 </resources>

@@ -2,6 +2,7 @@ package com.winlator.container;
 
 import com.winlator.box64.Box64Preset;
 import com.winlator.core.AppUtils;
+import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.KeyValueSet;
@@ -17,7 +18,7 @@ import java.io.File;
 import java.util.Iterator;
 
 public class Container {
-    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform";
+    public static final String DEFAULT_ENV_VARS = "LC_ALL=zh_CN.utf8 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_MAX_SIZE=512MB TU_DEBUG=sysmem,noconform,nofsdt,gmem MESA_GL_VERSION_OVERRIDE=3.1 DXVK_HUD=fps,version TZ=Asia/Shanghai MESA_VK_WSI_DEBUG=-sw MESA_EXTENSION_MAX_YEAR=2025 BOX64_DYNAREC_WEAKBARRIER=-1 mesa_glthread=true WINEESYNC=1 MESA_SHADER_CACHE_DISABLE=false DXVK_ASYNC=1 BOX64_MMAP32=1 LIBGL_ALWAYS_SOFTWARE=0 DRAW_USE_LLVM=0 GST_DEBUG=0 MANGOHUD=0 MANGOHUD_CONFIGFILE=/data/user/0/com.winlator/files/rootfs/home/mangohud2.conf";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
     public static final String DEFAULT_AUDIO_DRIVER = AudioDrivers.ALSA;
     public static final String DEFAULT_DXWRAPPER = DXWrappers.DXVK;
@@ -47,6 +48,7 @@ public class Container {
     private String cpuListWoW64;
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
     private String box64Preset = Box64Preset.DEFAULT;
+    private String box64Version = DefaultVersion.BOX64;
     private File rootDir;
     private JSONObject extraData;
 
@@ -191,6 +193,14 @@ public class Container {
         this.box64Preset = box64Preset;
     }
 
+    public String getBox64Version() {
+        return box64Version;
+    }
+
+    public void setBox64Version(String box64Version) {
+        this.box64Version = box64Version;
+    }
+
     public File getRootDir() {
         return rootDir;
     }
@@ -302,6 +312,7 @@ public class Container {
             data.put("hudMode", hudMode);
             data.put("startupSelection", startupSelection);
             data.put("box64Preset", box64Preset);
+            data.put("box64Version", box64Version);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
 
@@ -378,6 +389,9 @@ public class Container {
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "box64Version" :
+                    setBox64Version(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

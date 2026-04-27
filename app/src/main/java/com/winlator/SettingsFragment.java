@@ -115,19 +115,12 @@ public class SettingsFragment extends Fragment {
         String midiInputDevice = preferences.getString("midi_input_device", "auto");
         loadMIDIInputDeviceSpinner(sMIDIInputDevice, midiInputDevice);
 
-        final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
-        String box64Version = preferences.getString("box64_version", null);
-        GeneralComponents.initViews(GeneralComponents.Type.BOX64, view.findViewById(R.id.Box64Toolbox), sBox64Version, box64Version, DefaultVersion.BOX64);
-
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         loadBox64PresetSpinner(view, sBox64Preset);
 
         final RadioGroup rgAppTheme = view.findViewById(R.id.RGAppTheme);
-        final int oldAppThemeId = preferences.getInt("app_theme", APP_THEME_DARK) == APP_THEME_DARK ? R.id.RBDark : R.id.RBLight;
+        final int oldAppThemeId = preferences.getInt("app_theme", APP_THEME_LIGHT) == APP_THEME_DARK ? R.id.RBDark : R.id.RBLight;
         rgAppTheme.check(oldAppThemeId);
-
-        final CheckBox cbMoveCursorToTouchpoint = view.findViewById(R.id.CBMoveCursorToTouchpoint);
-        cbMoveCursorToTouchpoint.setChecked(preferences.getBoolean("move_cursor_to_touchpoint", false));
 
         final CheckBox cbCapturePointerOnExternalMouse = view.findViewById(R.id.CBCapturePointerOnExternalMouse);
         cbCapturePointerOnExternalMouse.setChecked(preferences.getBoolean("capture_pointer_on_external_mouse", true));
@@ -189,9 +182,7 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {
             SharedPreferences.Editor editor = preferences.edit();
             editor.putString("soundfont", sSoundFont.getSelectedItem().toString());
-            editor.putString("box64_version", StringUtils.parseIdentifier(sBox64Version.getSelectedItem()));
             editor.putString("box64_preset", Box64PresetManager.getSpinnerSelectedId(sBox64Preset));
-            editor.putBoolean("move_cursor_to_touchpoint", cbMoveCursorToTouchpoint.isChecked());
             editor.putBoolean("capture_pointer_on_external_mouse", cbCapturePointerOnExternalMouse.isChecked());
             editor.putFloat("cursor_speed", sbCursorSpeed.getValue() / 100.0f);
             editor.putFloat("cursor_scale", sbCursorSize.getValue() / 100.0f);
@@ -212,8 +203,9 @@ public class SettingsFragment extends Fragment {
             boolean restartApp = oldLCIndex != newLCIndex || oldAppThemeId != newAppThemeId;
 
             int midiInputDevicePosition = sMIDIInputDevice.getSelectedItemPosition();
+            Object selectedItem = sMIDIInputDevice.getSelectedItem();
             editor.putString("midi_input_device", midiInputDevicePosition == 0 ? "none" :
-                                                 (midiInputDevicePosition == 1 ? "auto" : sMIDIInputDevice.getSelectedItem().toString()));
+                                                 (midiInputDevicePosition == 1 ? "auto" : selectedItem != null ? selectedItem.toString() : "auto"));
 
             String logPath = etLogFile.getText().toString().trim();
             if (!logPath.equals(defaultLogPath) && !logPath.isEmpty()) {
@@ -443,14 +435,22 @@ public class SettingsFragment extends Fragment {
     public static void resetBox64Version(AppCompatActivity activity) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("box64_version", DefaultVersion.BOX64);
         editor.remove("current_box64_version");
         editor.apply();
     }
 
     private void loadMIDIInputDeviceSpinner(final Spinner sMIDIInputDevice, final String selectedValue) {
+        if (!isAdded()) return;
         Context context = getContext();
         MidiManager mm = (MidiManager)context.getSystemService(Context.MIDI_SERVICE);
+        if (mm == null) {
+            ArrayList<String> items = new ArrayList<>();
+            items.add(context.getString(R.string.none));
+            items.add(context.getString(R.string.auto));
+            sMIDIInputDevice.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items));
+            sMIDIInputDevice.setSelection(selectedValue.equals("none") ? 0 : 1, false);
+            return;
+        }
         MidiDeviceInfo[] infos = mm.getDevices();
 
         if (!midiDeviceCallbackRegistered) {
@@ -475,7 +475,8 @@ public class SettingsFragment extends Fragment {
         for (MidiDeviceInfo info : infos) {
             if (info.getOutputPortCount() > 0) {
                 Bundle properties = info.getProperties();
-                items.add(properties.getString(MidiDeviceInfo.PROPERTY_NAME));
+                String name = properties.getString(MidiDeviceInfo.PROPERTY_NAME);
+                if (name != null) items.add(name);
             }
         }
 
