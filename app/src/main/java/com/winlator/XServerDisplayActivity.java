@@ -17,6 +17,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.Spinner;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -264,6 +265,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
                 if (win32AppWorkarounds != null) win32AppWorkarounds.applyWindowWorkarounds(window);
                 changeFrameRatingVisibility(window, true);
+            }
+
+            @Override
+            public void onModifyWindowProperty(Window window, Property property) {
             }
 
             @Override
