@@ -417,4 +417,43 @@ public abstract class FileUtils {
         intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         activity.startActivity(intent);
     }
+
+    /**
+     * Merge copy a directory - only overwrites files/directories with the same name,
+     * preserves files in target that don't exist in source.
+     */
+    public static boolean mergeCopy(File srcDir, File dstDir) {
+        if (isSymlink(srcDir)) return true;
+        if (!srcDir.isDirectory()) return false;
+
+        // Create destination directory if it doesn't exist
+        if (!dstDir.exists() && !dstDir.mkdirs()) return false;
+
+        String[] filenames = srcDir.list();
+        if (filenames == null) return true;
+
+        for (String filename : filenames) {
+            File srcFile = new File(srcDir, filename);
+            File dstFile = new File(dstDir, filename);
+
+            if (srcFile.isDirectory()) {
+                // Recursively merge directories
+                if (!dstFile.exists() && !dstFile.mkdirs()) return false;
+                mergeCopy(srcFile, dstFile);
+            } else {
+                // For files, just overwrite
+                File parent = dstFile.getParentFile();
+                if (parent != null && !parent.exists() && !parent.mkdirs()) return false;
+
+                try (FileChannel inChannel = (new FileInputStream(srcFile)).getChannel();
+                     FileChannel outChannel = (new FileOutputStream(dstFile)).getChannel()) {
+                    inChannel.transferTo(0, inChannel.size(), outChannel);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

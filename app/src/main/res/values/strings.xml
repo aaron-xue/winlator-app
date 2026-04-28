@@ -364,4 +364,6 @@
     <string name="invalid_restore_file">Please select a .whp file</string>
     <string name="touchpad_mode">Touchpad Mode</string>
     <string name="container_base_info">BaseInfo</string>
+    <string name="confirm_overwrite">Confirm Overwrite</string>
+    <string name="file_or_directory_already_exists_overwrite">A file or directory with the same name already exists. Do you want to overwrite it?</string>
 </resources>

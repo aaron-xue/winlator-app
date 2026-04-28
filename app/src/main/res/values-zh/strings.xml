@@ -389,4 +389,6 @@
     <string name="invalid_restore_file">请选择 .whp 文件</string>
     <string name="touchpad_mode">触控板模式</string>
     <string name="container_base_info">基本信息</string>
+    <string name="confirm_overwrite">确认覆盖</string>
+    <string name="file_or_directory_already_exists_overwrite">文件或目录已存在，是否覆盖？</string>
 </resources>
