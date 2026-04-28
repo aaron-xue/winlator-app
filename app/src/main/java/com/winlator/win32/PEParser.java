@@ -180,82 +180,200 @@ public class PEParser {
         }
     }
 
-    private Bitmap decodeIcon(int iconIndex, boolean largeIcon, ArrayList<ImageResourceDataEntry> dataEntries) {
+    /**
+     * 优化的图标提取方法，总是返回最高质量的图标
+     * 策略：
+     * 1. 首先尝试寻找 PNG 格式的图标（通常质量最高）
+     * 2. 其次选择像素尺寸最大的 BMP 图标
+     * 3. 最后选择色彩深度最高的图标
+     */
+    private Bitmap decodeIcon(int iconIndex, boolean largeIcon, ArrayList<ImageResourceDataEntry> dataEntries) throws IOException {
+        // 存储所有有效图标的候选者
+        class IconCandidate {
+            int width;
+            int bitCount;
+            boolean isPNG;
+            int index;
+            ImageResourceDataEntry entry;
+            Bitmap bitmap;
+        }
+        ArrayList<IconCandidate> candidates = new ArrayList<>();
+        
+        // 第一阶段：收集所有候选图标的信息
         for (int i = 0; i < dataEntries.size(); i++) {
             ImageResourceDataEntry dataEntry = dataEntries.get(i);
-            int fileOffset = dataEntry.offsetToData - resourcesRVA + resourcesOffset;
-
+            int fileOffset = (dataEntry.offsetToData - this.resourcesRVA) + this.resourcesOffset;
             ByteBuffer iconData = readIconData(fileOffset, dataEntry.size);
             if (iconData != null) {
+                IconCandidate candidate = new IconCandidate();
+                candidate.index = i;
+                candidate.entry = dataEntry;
+                
                 if (ImageUtils.isPNGData(iconData)) {
+                    // PNG 格式优先级最高
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inJustDecodeBounds = true;
                     BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit(), options);
-
-                    boolean success = iconIndex >= 0 ? i == iconIndex : (largeIcon == (options.outWidth >= 32));
-                    if (success) return BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit());
-                }
-                else {
-                    int bitmapOffset = iconData.getInt();
-                    int bmpWidth = iconData.getInt();
-                    int bmpHeight = iconData.getInt();
-                    short colorPlanes = iconData.getShort();
-                    short bitCount = iconData.getShort();
-                    int compression = iconData.getInt();
-                    int sizeImage = iconData.getInt();
-                    int xPelsPerMeter = iconData.getInt();
-                    int yPelsPerMeter = iconData.getInt();
-                    int clrUsed = iconData.getInt();
-
-                    if (bitCount == 8 && (compression != 0 || clrUsed != 0)) continue;
-
-                    boolean success = (iconIndex >= 0 ? i == iconIndex : (largeIcon == (bmpWidth >= 32))) && bitCount >= 8;
-                    if (success) {
-                        iconData.position(bitmapOffset);
-                        Bitmap bitmap = MSBitmap.decodeBuffer(bmpWidth, bmpWidth, bitCount, iconData);
-                        if (bitmap != null) return bitmap;
+                    
+                    if (options.outWidth > 0) {
+                        candidate.width = options.outWidth;
+                        candidate.bitCount = 32; // PNG 通常使用 32 位色彩
+                        candidate.isPNG = true;
+                        candidates.add(candidate);
+                    }
+                } else {
+                    // BMP 格式
+                    if (iconData.remaining() >= 40) {
+                        int bitmapOffset = iconData.getInt();
+                        int bmpWidth = iconData.getInt();
+                        if (bmpWidth > 0 && bmpWidth <= 4096 && bitmapOffset >= 0 && bitmapOffset < iconData.limit()) {
+                            // 读取位图信息头
+                            iconData.getInt(); // height
+                            iconData.getShort(); // planes
+                            short bitCount = iconData.getShort();
+                            int compression = iconData.getInt();
+                            // ... 其他字段
+                            
+                            // 只支持未压缩的格式
+                            if ((bitCount == 8 || bitCount == 24 || bitCount == 32) && compression == 0) {
+                                candidate.width = bmpWidth;
+                                candidate.bitCount = bitCount;
+                                candidate.isPNG = false;
+                                candidates.add(candidate);
+                            }
+                        }
                     }
                 }
             }
         }
-
+        
+        // 如果请求特定的图标索引
+        if (iconIndex >= 0) {
+            for (IconCandidate candidate : candidates) {
+                if (candidate.index == iconIndex) {
+                    int fileOffset = (candidate.entry.offsetToData - this.resourcesRVA) + this.resourcesOffset;
+                    ByteBuffer iconData = readIconData(fileOffset, candidate.entry.size);
+                    if (iconData != null) {
+                        if (candidate.isPNG) {
+                            return BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit());
+                        } else {
+                            int bitmapOffset = iconData.getInt();
+                            iconData.getInt(); // width
+                            iconData.getInt(); // height
+                            iconData.getShort(); // planes
+                            iconData.position(bitmapOffset);
+                            return MSBitmap.decodeBuffer(candidate.width, candidate.width, candidate.bitCount, iconData);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        
+        // 第二阶段：根据条件选择最佳候选者
+        // 优先级：PNG > 宽度 > 色彩深度
+        IconCandidate bestCandidate = null;
+        for (IconCandidate candidate : candidates) {
+            boolean sizeMatch = largeIcon ? (candidate.width >= 32) : (candidate.width < 32);
+            if (!sizeMatch) continue;
+            
+            if (bestCandidate == null) {
+                bestCandidate = candidate;
+            } else {
+                // PNG 优先
+                if (candidate.isPNG && !bestCandidate.isPNG) {
+                    bestCandidate = candidate;
+                } else if (!candidate.isPNG && bestCandidate.isPNG) {
+                    continue;
+                }
+                // 同类型下选择更宽的
+                if (candidate.width > bestCandidate.width) {
+                    bestCandidate = candidate;
+                } else if (candidate.width == bestCandidate.width) {
+                    // 相同宽度下选择更高色彩深度的
+                    if (candidate.bitCount > bestCandidate.bitCount) {
+                        bestCandidate = candidate;
+                    }
+                }
+            }
+        }
+        
+        // 如果没有找到符合尺寸要求的图标，则选择最佳候选（忽略尺寸限制）
+        if (bestCandidate == null && !candidates.isEmpty()) {
+            bestCandidate = candidates.get(0);
+            for (IconCandidate candidate : candidates) {
+                if (candidate.isPNG && !bestCandidate.isPNG) {
+                    bestCandidate = candidate;
+                } else if (!candidate.isPNG && bestCandidate.isPNG) {
+                    continue;
+                }
+                if (candidate.width > bestCandidate.width ||
+                    (candidate.width == bestCandidate.width && candidate.bitCount > bestCandidate.bitCount)) {
+                    bestCandidate = candidate;
+                }
+            }
+        }
+        
+        // 第三阶段：解码并返回最佳候选者
+        if (bestCandidate != null) {
+            int fileOffset = (bestCandidate.entry.offsetToData - this.resourcesRVA) + this.resourcesOffset;
+            ByteBuffer iconData = readIconData(fileOffset, bestCandidate.entry.size);
+            if (iconData != null) {
+                if (bestCandidate.isPNG) {
+                    return BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit());
+                } else {
+                    int bitmapOffset = iconData.getInt();
+                    iconData.getInt(); // width
+                    iconData.getInt(); // height
+                    iconData.getShort(); // planes
+                    iconData.position(bitmapOffset);
+                    return MSBitmap.decodeBuffer(bestCandidate.width, bestCandidate.width, bestCandidate.bitCount, iconData);
+                }
+            }
+        }
+        
         return null;
     }
 
     private Bitmap extractIcon(int iconIndex) {
         if (!peFile.isFile()) return null;
 
-        ImageResourceDirectory rootDirectory = readImageResourceDirectory();
-        if (rootDirectory == null) return null;
+        try {
+            ImageResourceDirectory rootDirectory = readImageResourceDirectory();
+            if (rootDirectory == null) return null;
 
-        ArrayList<ImageResourceDataEntry> dataEntries = new ArrayList<>();
-        Stack<ImageResourceDirectory> stack = new Stack<>();
-        stack.push(rootDirectory);
-        while (!stack.isEmpty()) {
-            ImageResourceDirectory directory = stack.pop();
+            ArrayList<ImageResourceDataEntry> dataEntries = new ArrayList<>();
+            Stack<ImageResourceDirectory> stack = new Stack<>();
+            stack.push(rootDirectory);
+            while (!stack.isEmpty()) {
+                ImageResourceDirectory directory = stack.pop();
 
-            for (ImageResourceEntry entry : directory.entries) {
-                if (entry instanceof ImageResourceDirectoryEntry) {
-                    stack.push(((ImageResourceDirectoryEntry)entry).directory);
-                }
-                else if (entry instanceof ImageResourceDataEntry) {
-                    dataEntries.add((ImageResourceDataEntry)entry);
+                for (ImageResourceEntry entry : directory.entries) {
+                    if (entry instanceof ImageResourceDirectoryEntry) {
+                        stack.push(((ImageResourceDirectoryEntry)entry).directory);
+                    }
+                    else if (entry instanceof ImageResourceDataEntry) {
+                        dataEntries.add((ImageResourceDataEntry)entry);
+                    }
                 }
             }
-        }
 
-        if (iconIndex >= 0) {
-            return decodeIcon(iconIndex, true, dataEntries);
-        }
-        else {
-            Bitmap bitmap = decodeIcon(-1, true, dataEntries);
-            if (bitmap != null) return bitmap;
+            if (iconIndex >= 0) {
+                return decodeIcon(iconIndex, true, dataEntries);
+            }
+            else {
+                Bitmap bitmap = decodeIcon(-1, true, dataEntries);
+                if (bitmap != null) return bitmap;
 
-            bitmap = decodeIcon(-1, false, dataEntries);
-            if (bitmap != null) return bitmap;
-        }
+                bitmap = decodeIcon(-1, false, dataEntries);
+                if (bitmap != null) return bitmap;
+            }
 
-        return null;
+            return null;
+        }
+        catch (IOException e) {
+            return null;
+        }
     }
 
     public static Bitmap extractIcon(File peFile) {
