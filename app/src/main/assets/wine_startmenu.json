@@ -169,12 +169,12 @@
         ]
     },
     {
-                "name" : "Red Alert 2 Patch",
-                "children" : [
-                    {
-                        "name" : "1. cncddraw-opengl",
-                        "path" : "Z:/opt/apps/bat/ra2.bat"
-                    }
-                ]
+        "name" : "Red Alert 2 Patch",
+        "children" : [
+            {
+                "name" : "1. cncddraw-opengl",
+                "path" : "Z:/opt/apps/bat/ra2.bat"
+            }
+        ]
     }
 ]

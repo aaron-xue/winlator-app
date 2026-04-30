@@ -104,77 +104,77 @@
         ]
     },
     {
-                "name" : "d7d8转d3d9",
-                "children" : [
-                    {
-                        "name" : "1、dxwrapper1.3.77",
-                        "path" : "Z:/opt/apps/bat/dxwrapper.bat"
-                    },
-                    {
-                        "name" : "2、cncddraw7.1",
-                        "path" : "Z:/opt/apps/bat/cncddraw.bat"
-                    },
-                    {
-                        "name" : "3、dgvoodoo2.86",
-                        "path" : "Z:/opt/apps/bat/dgvoodoo.bat"
-                    },
-                    {
-                        "name" : "4、opengl32",
-                        "path" : "Z:/opt/apps/bat/opengl32.bat"
-                    },
-                    {
-                        "name" : "5、还原ddarw",
-                        "path" : "Z:/opt/apps/bat/hyddraw.bat"
-                    }
-                ]
+        "name" : "d7d8转d3d9",
+        "children" : [
+            {
+                "name" : "1、dxwrapper1.3.77",
+                "path" : "Z:/opt/apps/bat/dxwrapper.bat"
+            },
+            {
+                "name" : "2、cncddraw7.1",
+                "path" : "Z:/opt/apps/bat/cncddraw.bat"
+            },
+            {
+                "name" : "3、dgvoodoo2.86",
+                "path" : "Z:/opt/apps/bat/dgvoodoo.bat"
+            },
+            {
+                "name" : "4、opengl32",
+                "path" : "Z:/opt/apps/bat/opengl32.bat"
+            },
+            {
+                "name" : "5、还原ddarw",
+                "path" : "Z:/opt/apps/bat/hyddraw.bat"
+            }
+        ]
     },
     {
-    "name": "Hud&Dxvk配置",
-    "children": [
-        {
-            "name": "1、mangohud1.conf",
-            "path": "Z:\\opt\\apps\\AkelPad.exe",
-            "cmdArgs": "Z:\\home\\mangohud1.conf",
-            "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
-            "iconIndex": 0
-        },
-        {
-            "name": "2、mangohud2.conf(默认)",
-            "path": "Z:\\opt\\apps\\AkelPad.exe",
-            "cmdArgs": "Z:\\home\\mangohud2.conf",
-            "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
-            "iconIndex": 0
-        },
-        {
-            "name": "3、mangohud3.conf",
-            "path": "Z:\\opt\\apps\\AkelPad.exe",
-            "cmdArgs": "Z:\\home\\mangohud3.conf",
-            "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
-            "iconIndex": 0
-        },
-        {
-            "name": "4、mangohud4.conf",
-            "path": "Z:\\opt\\apps\\AkelPad.exe",
-            "cmdArgs": "Z:\\home\\mangohud4.conf",
-            "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
-            "iconIndex": 0
-        },
-        {
-            "name": "5、dxvk.conf",
-            "path": "Z:\\opt\\apps\\AkelPad.exe",
-            "cmdArgs": "Z:\\home\\xuser\\.config\\dxvk.conf",
-            "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
-            "iconIndex": 0
-        }
-    ]
-},
+        "name": "Hud&Dxvk配置",
+        "children": [
+            {
+                "name": "1、mangohud1.conf",
+                "path": "Z:\\opt\\apps\\AkelPad.exe",
+                "cmdArgs": "Z:\\home\\mangohud1.conf",
+                "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
+                "iconIndex": 0
+            },
+            {
+                "name": "2、mangohud2.conf(默认)",
+                "path": "Z:\\opt\\apps\\AkelPad.exe",
+                "cmdArgs": "Z:\\home\\mangohud2.conf",
+                "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
+                "iconIndex": 0
+            },
+            {
+                "name": "3、mangohud3.conf",
+                "path": "Z:\\opt\\apps\\AkelPad.exe",
+                "cmdArgs": "Z:\\home\\mangohud3.conf",
+                "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
+                "iconIndex": 0
+            },
+            {
+                "name": "4、mangohud4.conf",
+                "path": "Z:\\opt\\apps\\AkelPad.exe",
+                "cmdArgs": "Z:\\home\\mangohud4.conf",
+                "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
+                "iconIndex": 0
+            },
+            {
+                "name": "5、dxvk.conf",
+                "path": "Z:\\opt\\apps\\AkelPad.exe",
+                "cmdArgs": "Z:\\home\\xuser\\.config\\dxvk.conf",
+                "iconLocation": "Z:\\opt\\apps\\AkelPad.exe",
+                "iconIndex": 0
+            }
+        ]
+    },
     {
-                "name" : "红警2补丁",
-                "children" : [
-                    {
-                        "name" : "1、cncddraw-opengl",
-                        "path" : "Z:/opt/apps/bat/ra2.bat"
-                    }
-                ]
+        "name" : "红警2补丁",
+        "children" : [
+            {
+                "name" : "1、cncddraw-opengl",
+                "path" : "Z:/opt/apps/bat/ra2.bat"
+            }
+        ]
     }
 ]
