@@ -719,6 +719,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
         touchpadView.setTouchpadMode(profile.getTouchpadMode());
         touchpadView.setMoveCursorToTouchpoint(profile.isMoveCursorToTouchpoint());
+        touchpadView.setTwoFingersDrag(profile.isTwoFingersDrag());
+        touchpadView.setTwoFingersRightClick(profile.isTwoFingersRightClick());
+        touchpadView.setLongPressRightClick(profile.isLongPressRightClick());
+        touchpadView.setPinchZoomEnabled(profile.isPinchZoomEnabled());
+        touchpadView.setShortDragEnabled(profile.isShortDragEnabled());
         // touchpadView.setPointerButtonRightEnabled(false);
 
         GLRenderer renderer = xServerView.getRenderer();

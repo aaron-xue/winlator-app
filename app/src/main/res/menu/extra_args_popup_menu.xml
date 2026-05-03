@@ -6,4 +6,6 @@
     <item android:title="-force-d3d9" />
     <item android:title="-force-d3d11" />
     <item android:title="/d3d9" />
+    <item android:title="/UseNativeGaInput=true" />
+    <item android:title="/UseNativeGaInputNoControllers=false" />
 </menu>

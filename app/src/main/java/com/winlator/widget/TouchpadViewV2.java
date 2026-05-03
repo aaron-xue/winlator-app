@@ -45,11 +45,19 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
     private boolean twoFingersDrag = true;
     private boolean twoFingersRightClick = true;
     private boolean longPressRightClick = true;
+    private static final float MIN_PINCH_SCALE_THRESHOLD = 0.005f;
+    private static final int DOUBLE_TAP_MAX_MILLISECONDS = 300;
+    private static final int DOUBLE_TAP_MAX_TRAVEL_DISTANCE = 30;
+
     private boolean pinchZoomEnabled = false;
     private float lastPinchDist = 0;
     private float currentPinchZoom = 1.0f;
     private float pinchCenterX = 0;
     private float pinchCenterY = 0;
+    private boolean pinchAnchorLocked = false;
+    private long lastSingleTapTime = 0;
+    private int lastSingleTapX = 0;
+    private int lastSingleTapY = 0;
     private Finger fingerPointerButtonLeft;
     private Finger fingerPointerButtonRight;
     private float scrollAccumY = 0;
@@ -70,6 +78,14 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
     private float resolutionScale = 1.0f;
 
     private boolean shortDragEnabled = true;  // 短时拖动开关
+
+    // 反向缩放：将 X server 坐标还原为缩放前对应的位置
+    private float unzoom(float coord, float anchor) {
+        if (pinchZoomEnabled && currentPinchZoom > 1.0f) {
+            return (coord - anchor) / currentPinchZoom + anchor;
+        }
+        return coord;
+    }
 
     public TouchpadViewV2(Context context, XServer xServer, boolean capturePointerOnExternalMouse) {
         super(context);
@@ -179,9 +195,26 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                 if (event.isFromSource(InputDevice.SOURCE_MOUSE)) return true;
                 scrollAccumY = 0;
                 scrolling = false;
-                lastPinchDist = 0;
                 fingers[pointerId] = new Finger(event.getX(actionIndex), event.getY(actionIndex));
                 numFingers++;
+                if (numFingers == 2 && pinchZoomEnabled) {
+                    Finger f1 = null, f2 = null;
+                    for (byte i = 0; i < MAX_FINGERS; i++) {
+                        if (fingers[i] != null) {
+                            if (f1 == null) f1 = fingers[i];
+                            else { f2 = fingers[i]; break; }
+                        }
+                    }
+                    if (f1 != null && f2 != null) {
+                        pinchCenterX = (f1.x + f2.x) * 0.5f;
+                        pinchCenterY = (f1.y + f2.y) * 0.5f;
+                        pinchAnchorLocked = true;
+                        currentPinchZoom = xServer.getRenderer().getPinchZoom();
+                        lastPinchDist = 0;
+                    }
+                } else {
+                    lastPinchDist = 0;
+                }
                 if (moveCursorToTouchpoint && pointerId == 0) {
                     isShortDrag = false;
                     isLongDrag = false;
@@ -220,10 +253,8 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                     numFingers--;
                     if (numFingers <= 1 && pinchZoomEnabled) {
                         lastPinchDist = 0;
-                        if (numFingers == 0) {
-                            currentPinchZoom = 1.0f;
-                            xServer.getRenderer().resetPinchZoom();
-                        }
+                        pinchAnchorLocked = false;
+                        // 缩放持久化：不调用 resetPinchZoom()
                     }
                 }
                 break;
@@ -234,7 +265,9 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                 isShortDrag = false;
                 isLongDrag = false;
                 lastPinchDist = 0;
+                pinchAnchorLocked = false;
                 scrollAccumY = 0;
+                lastSingleTapTime = 0;
                 if (pinchZoomEnabled) {
                     currentPinchZoom = 1.0f;
                     xServer.getRenderer().resetPinchZoom();
@@ -286,9 +319,11 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
         switch (numFingers) {
             case 1:
                 if (moveCursorToTouchpoint) {
+                    float f1x = unzoom(finger1.x, pinchCenterX);
+                    float f1y = unzoom(finger1.y, pinchCenterY);
                     if (finger1.isTap()) {
-                        if (Math.hypot(finger1.x - xServer.pointer.getX(), finger1.y - xServer.pointer.getY()) >= MAX_TAP_TRAVEL_DISTANCE) {
-                            xServer.injectPointerMove(finger1.x, finger1.y);
+                        if (Math.hypot(f1x - xServer.pointer.getX(), f1y - xServer.pointer.getY()) >= MAX_TAP_TRAVEL_DISTANCE) {
+                            xServer.injectPointerMove((int) f1x, (int) f1y);
                         }
                         postDelayed(() -> {
                             if (swapMouseButtons) {
@@ -301,8 +336,8 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                         }, MOVE_TO_CLICK_DELAY_MS);
                     }
                     if (finger1.isLongPress() && longPressRightClick) {
-                        if (Math.hypot(finger1.x - xServer.pointer.getX(), finger1.y - xServer.pointer.getY()) >= MAX_TAP_TRAVEL_DISTANCE) {
-                            xServer.injectPointerMove(finger1.x, finger1.y);
+                        if (Math.hypot(f1x - xServer.pointer.getX(), f1y - xServer.pointer.getY()) >= MAX_TAP_TRAVEL_DISTANCE) {
+                            xServer.injectPointerMove((int) f1x, (int) f1y);
                         }
                         postDelayed(() -> {
                             if (!swapMouseButtons) {
@@ -324,13 +359,28 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                         else releasePointerButtonLeft(finger1);
                     }
                 } else if (finger1.isTap()) {
+                    // 双击检测：缩放模式下双击重置缩放
+                    if (pinchZoomEnabled && xServer.getRenderer().getPinchZoom() > 1.0f) {
+                        long now = System.currentTimeMillis();
+                        long dt = now - lastSingleTapTime;
+                        float dd = (float) Math.hypot(finger1.x - lastSingleTapX, finger1.y - lastSingleTapY);
+                        if (dt < DOUBLE_TAP_MAX_MILLISECONDS && dd < DOUBLE_TAP_MAX_TRAVEL_DISTANCE) {
+                            currentPinchZoom = 1.0f;
+                            xServer.getRenderer().resetPinchZoom();
+                            lastSingleTapTime = 0;
+                        } else {
+                            lastSingleTapTime = now;
+                            lastSingleTapX = finger1.x;
+                            lastSingleTapY = finger1.y;
+                        }
+                    }
                     if (swapMouseButtons) pressPointerButtonRight(finger1);
                     else pressPointerButtonLeft(finger1);
                 }
                 break;
             case 2:
                 Finger finger2 = findSecondFinger(finger1);
-                if (finger2 != null && finger1.isTap() && twoFingersRightClick) {
+                if (finger2 != null && finger1.isTap() && twoFingersRightClick && !pinchZoomEnabled) {
                     if (swapMouseButtons && !moveCursorToTouchpoint) pressPointerButtonLeft(finger1);
                     else pressPointerButtonRight(finger1);
                 }
@@ -362,11 +412,17 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
             float currDist = (float) Math.hypot(finger1.x - finger2.x, finger1.y - finger2.y) * resolutionScale;
             if (lastPinchDist > 0) {
                 float scale = currDist / lastPinchDist;
-                currentPinchZoom *= scale;
-                pinchCenterX = (finger1.x + finger2.x) * 0.5f;
-                pinchCenterY = (finger1.y + finger2.y) * 0.5f;
-                xServer.getRenderer().setPinchZoom(currentPinchZoom, pinchCenterX, pinchCenterY);
-                skipPointerMove = true;
+                if (Math.abs(scale - 1.0f) >= MIN_PINCH_SCALE_THRESHOLD) {
+                    currentPinchZoom *= scale;
+                    xServer.getRenderer().setPinchZoom(currentPinchZoom, pinchCenterX, pinchCenterY);
+                } else if (currentPinchZoom > 1.0f) {
+                    // 双指平行移动：平移视口（仅在已缩放时生效，避免除以零）
+                    float panDx = -(finger1.x - finger1.lastX) / (2.0f * (currentPinchZoom - 1.0f));
+                    float panDy = -(finger1.y - finger1.lastY) / (2.0f * (currentPinchZoom - 1.0f));
+                    pinchCenterX += panDx;
+                    pinchCenterY += panDy;
+                    xServer.getRenderer().setPinchZoom(currentPinchZoom, pinchCenterX, pinchCenterY);
+                }
             }
             lastPinchDist = currDist;
             scrolling = false;
@@ -402,7 +458,9 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
                         moveCursorToEdge(finger1);
                     }
                 } else if (duration >= LONG_DRAG_MIN_TIME && !isShortDrag) {
-                    xServer.injectPointerMove(finger1.x, finger1.y);
+                    int f1x = (int) unzoom(finger1.x, pinchCenterX);
+                    int f1y = (int) unzoom(finger1.y, pinchCenterY);
+                    xServer.injectPointerMove(f1x, f1y);
                     if (finger1.travelDistance() > MAX_TAP_TRAVEL_DISTANCE && !isLongDrag) {
                         isLongDrag = true;
                         if (swapMouseButtons) pressPointerButtonRight(finger1);
@@ -498,7 +556,13 @@ public class TouchpadViewV2 extends View implements View.OnCapturedPointerListen
     public boolean isTwoFingersRightClick() { return twoFingersRightClick; }
     public void setLongPressRightClick(boolean b) { longPressRightClick = b; }
     public boolean isLongPressRightClick() { return longPressRightClick; }
-    public void setPinchZoomEnabled(boolean b) { pinchZoomEnabled = b; }
+    public void setPinchZoomEnabled(boolean b) {
+        pinchZoomEnabled = b;
+        if (!b) {
+            currentPinchZoom = 1.0f;
+            xServer.getRenderer().resetPinchZoom();
+        }
+    }
     public boolean isPinchZoomEnabled() { return pinchZoomEnabled; }
     public void setShortDragEnabled(boolean b) { shortDragEnabled = b; }
     public boolean isShortDragEnabled() { return shortDragEnabled; }

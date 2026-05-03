@@ -246,6 +246,7 @@
     <string name="removing_files">Removing Files...</string>
     <string name="disable_mouse_input">Disable Mouse Input</string>
     <string name="move_cursor_to_touchpoint">Move Cursor to Touchpoint</string>
+    <string name="pinch_zoom">Pinch Zoom</string>
     <string name="sync_every_frame">Sync every frame</string>
     <string name="dpi_font_size">DPI (Font Size)</string>
     <string name="preferred_input_api">Preferred Input API</string>
@@ -366,4 +367,10 @@
     <string name="container_base_info">BaseInfo</string>
     <string name="confirm_overwrite">Confirm Overwrite</string>
     <string name="file_or_directory_already_exists_overwrite">A file or directory with the same name already exists. Do you want to overwrite it?</string>
+    <string name="touchpad_settings">Touchpad Settings</string>
+    <string name="two_fingers_drag">Two-fingers Drag</string>
+    <string name="two_fingers_right_click">Two-fingers Right Click</string>
+    <string name="long_press_right_click">Long Press Right Click</string>
+    <string name="pinch_zoom_enabled">Pinch Zoom</string>
+    <string name="short_drag_enabled">Short Drag</string>
 </resources>
